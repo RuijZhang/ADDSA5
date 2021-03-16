@@ -1,0 +1,51 @@
+---
+title: "ADDS A5 Q4"
+output: flexdashboard::flex_dashboard
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+library('MRIcloudT1volumetrics')
+library('tidyverse')
+install.packages("kirby21.base")
+library('kirby21.mricloud')
+library('shiny')
+library('plotly')
+fileNames = get_txt_filenames(visits = 1, file_types =  "volumes_corrected")
+```
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+selectInput("type", label = "Type",
+            choices = c(1, 2), selected = 1)
+selectInput("level", label = "Level",
+            choices = c(1, 2, 3, 4, 5), selected = 1)
+```
+Column
+-----------------------------------------------------------------------
+
+###
+
+```{r}
+dat <- reactive({
+  temp <- readFileList(fileNames$filename, idList = fileNames$Subject_ID) %>%
+  filter(type == input$type, level == input$level) %>%
+  select(id, roi, volume) %>% group_by(roi) %>%
+  summarise(roiMean = mean(volume),
+            roiSD = sd(volume),
+            n = n()
+            ) %>% mutate(roi = as.factor(roi))
+  temp$Composition <- temp$roiMean/sum(temp$roiMean)
+  temp
+})
+
+renderPlotly({
+  plot <- ggplot(data = dat(), aes(x = roi, y = Composition)) + geom_col(fill = '#6495ED')+
+        labs(title = 'Mean Composition') + theme_classic()+
+        theme(plot.title = element_text(hjust = 0.5))+
+        theme(axis.text.x = element_text(angle = 90))
+  ggplotly(plot)
+})
+```
+
+
